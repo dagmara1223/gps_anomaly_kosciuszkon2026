@@ -1,51 +1,83 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import CN0Chart from './components/charts/CN0Chart';
 
+type GNSSPacket = {
+  TOW: number;
+  CN0: number;
+  Output: number;
+};
+
 export default function App() {
-  const [stream, setStream] = useState<any[]>([]);
+  const [stream, setStream] = useState<GNSSPacket[]>([]);
+  const ws = useRef<WebSocket | null>(null);
 
   useEffect(() => {
-    let tick = 0;
-    const interval = setInterval(() => {
-      tick++;
-      
-      // Simulate data every 1 second
-      const isAttack = (tick % 20) > 12; // Anomaly every 12 seconds
-      
-      const newPoint = {
-        TOW: 491568 + tick,
-        CN0: isAttack ? (35 + Math.random() * 5) : (48 + Math.random() * 2),
-        Output: isAttack ? 1.0 : 0.0
-      };
+    const socketUrl = "ws://127.0.0.1:8000/ws/stream";
 
-      setStream((prev) => {
-        const next = [...prev, newPoint];
-        if (next.length > 40) return next.slice(1); // Keep window of 40 points
-        return next;
-      });
-    }, 1000);
+    ws.current = new WebSocket(socketUrl);
 
-    return () => clearInterval(interval);
+    ws.current.onopen = () => {
+      console.log("WebSocket connected");
+    };
+
+    ws.current.onmessage = (event) => {
+      try {
+        const data: GNSSPacket = JSON.parse(event.data);
+
+        setStream((prev) => {
+          const next = [...prev, data];
+          return next.slice(-40); // keep last 40 points
+        });
+      } catch (err) {
+        console.error("Invalid JSON from backend:", event.data);
+      }
+    };
+
+    ws.current.onerror = (err) => {
+      console.error("WebSocket error:", err);
+    };
+
+    ws.current.onclose = () => {
+      console.log("WebSocket closed");
+    };
+
+    return () => {
+      ws.current?.close();
+    };
   }, []);
+
+  const latest = stream[stream.length - 1];
 
   return (
     <div className="min-h-screen bg-black p-10 flex flex-col items-center">
       <div className="w-full max-w-4xl">
+
+        {/* HEADER */}
         <header className="mb-6 flex justify-between items-center">
-          <h1 className="text-emerald-500 font-mono text-2xl font-bold">GNSS DASHBOARD TEST</h1>
+          <h1 className="text-emerald-500 font-mono text-2xl font-bold">
+            GNSS DASHBOARD (LIVE)
+          </h1>
+
           <div className="text-slate-400 font-mono">
-            STATUS: {stream.length > 0 && stream[stream.length-1].Output > 0 ? 
-              <span className="text-red-500 animate-pulse underline">!! ATTACK !!</span> : 
-              <span className="text-emerald-500">NOMINAL</span>}
+            STATUS:{' '}
+            {latest?.Output ? (
+              <span className="text-red-500 animate-pulse underline">
+                !! ANOMALY !!
+              </span>
+            ) : (
+              <span className="text-emerald-500">NOMINAL</span>
+            )}
           </div>
         </header>
 
-        {/* This is the chart component */}
+        {/* CHART */}
         <CN0Chart data={stream} />
 
-        <div className="mt-6 p-4 bg-slate-900 rounded text-slate-500 font-mono text-xs">
-          DEBUG_LOG: {JSON.stringify(stream[stream.length - 1])}
+        {/* DEBUG PANEL */}
+        <div className="mt-6 p-4 bg-slate-900 rounded text-slate-400 font-mono text-xs">
+          DEBUG_LATEST: {latest ? JSON.stringify(latest) : "waiting for data..."}
         </div>
+
       </div>
     </div>
   );
