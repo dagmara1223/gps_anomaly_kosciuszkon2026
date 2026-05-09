@@ -5,7 +5,7 @@ import MiniChart from '../components/charts/MiniChart';
 import SandboxSection from './SandboxSection';
 import StatusBadge from '../components/ui/StatusBadge';
 
-export default function LiveSection({ satId}: any) {
+export default function LiveSection({satId, SandboxActive,}: {satId: number | null; SandboxActive: boolean;}) {
   const [stream, setStream] = useState<any[]>([]);
   const ws = useRef<WebSocket | null>(null);
   
@@ -42,8 +42,7 @@ export default function LiveSection({ satId}: any) {
         <MiniChart data={stream} dataKey="PC" label="Prompt Correlator" color="#eab308" />
         <MiniChart data={stream} dataKey="LC" label="Late Correlator" color="#f97316" />
       </div>
-
-      <SandboxSection websocketId={sessionId} />
+      {SandboxActive && <SandboxSection websocketId={sessionId} />}
     </div>
   );
 }

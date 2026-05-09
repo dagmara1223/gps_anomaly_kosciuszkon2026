@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import InfoSection from './sections/InfoSection';
 import LiveSection from './sections/LiveSection';
+import GameSection from './sections/GameSection';
 import Header from './components/ui/Header';
 
 export default function App() {
-  const [activeSection, setActiveSection] = useState<'info' | 'live'>('info');
+  const [activeSection, setActiveSection] = useState<'info' | 'live' | 'game'>('info');
   const [selectedSat, setSelectedSat] = useState<number | null>(null);
 
   const satellites = [1, 2, 3, 4, 5, 6]; 
@@ -27,9 +28,11 @@ export default function App() {
       <main className="max-w-7xl mx-auto p-4 md:p-8">
         {activeSection === 'info' ? (
           <InfoSection/>
-        ) : (
-          <LiveSection satId={selectedSat} />
-        )}
+        ) : activeSection === 'live' ?  (
+          <LiveSection satId={selectedSat} SandboxActive={true} />
+        ) :   (
+          <GameSection />
+        ) }
       </main>
     </div>
   );
