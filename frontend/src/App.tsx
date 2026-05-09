@@ -1,84 +1,39 @@
-import React, { useEffect, useState, useRef } from 'react';
-import CN0Chart from './components/charts/CN0Chart';
-
-type GNSSPacket = {
-  TOW: number;
-  CN0: number;
-  Output: number;
-};
+import { useState } from 'react';
+import InfoSection from './sections/InfoSection';
+import LiveSection from './sections/LiveSection';
+import GameSection from './sections/GameSection';
+import Header from './components/ui/Header';
 
 export default function App() {
-  const [stream, setStream] = useState<GNSSPacket[]>([]);
-  const ws = useRef<WebSocket | null>(null);
+  const [activeSection, setActiveSection] = useState<'info' | 'live' | 'game'>('info');
+  const [selectedSat, setSelectedSat] = useState<number | null>(null);
 
-  useEffect(() => {
-    const socketUrl = "ws://127.0.0.1:8000/ws/stream";
+  const satellites = [1, 2, 3, 4, 5, 6]; 
 
-    ws.current = new WebSocket(socketUrl);
-
-    ws.current.onopen = () => {
-      console.log("WebSocket connected");
-    };
-
-    ws.current.onmessage = (event) => {
-      try {
-        const data: GNSSPacket = JSON.parse(event.data);
-
-        setStream((prev) => {
-          const next = [...prev, data];
-          return next.slice(-40); // keep last 40 points
-        });
-      } catch (err) {
-        console.error("Invalid JSON from backend:", event.data);
-      }
-    };
-
-    ws.current.onerror = (err) => {
-      console.error("WebSocket error:", err);
-    };
-
-    ws.current.onclose = () => {
-      console.log("WebSocket closed");
-    };
-
-    return () => {
-      ws.current?.close();
-    };
-  }, []);
-
-  const latest = stream[stream.length - 1];
+  const handleSelectSat = (id: number) => {
+    setSelectedSat(id);
+    setActiveSection('live');
+  };
 
   return (
-    <div className="min-h-screen bg-black p-10 flex flex-col items-center">
-      <div className="w-full max-w-4xl">
+    <div className="min-h-screen bg-black">
+      <Header 
+      satellites={satellites}
+      selectedSat={selectedSat}
+      onSelectSat={handleSelectSat}
+      activeSection={activeSection}
+      onNavigate={setActiveSection}
+    />
 
-        {/* HEADER */}
-        <header className="mb-6 flex justify-between items-center">
-          <h1 className="text-emerald-500 font-mono text-2xl font-bold">
-            GNSS DASHBOARD (LIVE)
-          </h1>
-
-          <div className="text-slate-400 font-mono">
-            STATUS:{' '}
-            {latest?.Output ? (
-              <span className="text-red-500 animate-pulse underline">
-                !! ANOMALY !!
-              </span>
-            ) : (
-              <span className="text-emerald-500">NOMINAL</span>
-            )}
-          </div>
-        </header>
-
-        {/* CHART */}
-        <CN0Chart data={stream} />
-
-        {/* DEBUG PANEL */}
-        <div className="mt-6 p-4 bg-slate-900 rounded text-slate-400 font-mono text-xs">
-          DEBUG_LATEST: {latest ? JSON.stringify(latest) : "waiting for data..."}
-        </div>
-
-      </div>
+      <main className="max-w-7xl mx-auto p-4 md:p-8">
+        {activeSection === 'info' ? (
+          <InfoSection/>
+        ) : activeSection === 'live' ?  (
+          <LiveSection satId={selectedSat} SandboxActive={true} />
+        ) :   (
+          <GameSection />
+        ) }
+      </main>
     </div>
   );
 }
