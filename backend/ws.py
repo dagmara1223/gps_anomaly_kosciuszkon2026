@@ -3,6 +3,9 @@ import asyncio
 import pandas as pd
 import os
 
+from session_state import sessions, SessionState
+from tampering_logic import tamper_row
+
 router = APIRouter()
 
 DATA_DIR = "../data"
@@ -18,8 +21,12 @@ async def user_stream(websocket: WebSocket, sat: int, interval: float):
 
     print(f"USER STREAM STARTED: {file_path}")
 
+    session_id = id(websocket)
+    state = SessionState()
+    sessions[session_id] = state
+
     try:
-        for chunk in pd.read_csv(file_path, chunksize=CHUNK_SIZE):
+        for chunk in pd.read_csv(file_path, chunksize=CHUNK_SIZE, engine="python"):
 
             for _, row in chunk.iterrows():
 
@@ -28,11 +35,25 @@ async def user_stream(websocket: WebSocket, sat: int, interval: float):
                     print("USER DISCONNECTED")
                     return
 
-                await websocket.send_json(row.to_dict())
-                await asyncio.sleep(interval)
+                try:
+                    raw = row.to_dict()
+
+                    # 🔥 APPLY TAMPERING HERE
+                    tampered = tamper_row(raw, state)
+
+                    await websocket.send_json(tampered)
+                    await asyncio.sleep(interval)
+
+                except Exception as e:
+                    print("SEND ERROR:", e)
+                    return
 
     except Exception as e:
         print("STREAM ERROR:", e)
+
+    finally:
+        sessions.pop(session_id, None)
+        print("SESSION CLEANED")
 
 
 # -----------------------------
@@ -43,7 +64,6 @@ async def stream_socket(websocket: WebSocket):
 
     await websocket.accept()
 
-    # read query param: ws://.../ws/stream?sat=6
     sat = websocket.query_params.get("sat", "6")
     sat = int(sat)
 

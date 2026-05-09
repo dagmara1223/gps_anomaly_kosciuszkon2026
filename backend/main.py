@@ -3,6 +3,7 @@ from pydantic import BaseModel
 
 from tampering_logic import update_metrics
 from ws import router as ws_router
+from session_state import sessions, SessionState
 
 app = FastAPI(title="GNSS Sandbox Backend")
 
@@ -18,17 +19,28 @@ class MetricsRequest(BaseModel):
     doppler_shift: float = 0.0
     pseudorange_bias: float = 0.0
     time_drift: float = 0.0
+    attack_mode: int = 0
 
 
 # -----------------------------
 # Metrics endpoint
 # -----------------------------
 @app.post("/change_metrics")
-async def change_metrics(req: MetricsRequest):
-    result = update_metrics(req.dict())
+async def change_metrics(req: MetricsRequest, websocket_id: str):
+    """
+    websocket_id = frontend session id
+    """
 
-    return {
-        "status": "ok",
-        "applied_metrics": req.dict(),
-        "model_output": result.get("model_output"),
-    }
+    if websocket_id not in sessions:
+        sessions[websocket_id] = SessionState()
+
+    state = sessions[websocket_id]
+
+    state.cn0_scale = req.cn0_scale
+    state.noise_level = req.noise_level
+    state.doppler_shift = req.doppler_shift
+    state.pseudorange_bias = req.pseudorange_bias
+    state.time_drift = req.time_drift
+    state.attack_mode = req.attack_mode
+
+    return {"status": "updated"}
