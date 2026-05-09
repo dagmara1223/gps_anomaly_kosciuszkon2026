@@ -31,7 +31,7 @@ export default function App() {
         ) : activeSection === 'live' ?  (
           <LiveSection satId={selectedSat} SandboxActive={true} />
         ) :   (
-          <GameSection />
+          <GameSection satId={selectedSat}/>
         ) }
       </main>
     </div>

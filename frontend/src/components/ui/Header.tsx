@@ -4,8 +4,8 @@ interface HeaderProps {
   satellites: number[];
   selectedSat: number | null;
   onSelectSat: (id: number) => void;
-  activeSection: 'info' | 'live';
-  onNavigate: (section: 'info' | 'live') => void;
+  activeSection: 'info' | 'live' | 'game';
+  onNavigate: (section: 'info' | 'live' | 'game') => void;
 }
 
 export default function Header({ 
@@ -43,6 +43,15 @@ export default function Header({
               }`}
             >
               Live
+            </button>
+            <button 
+              onClick={() => selectedSat && onNavigate('game')}
+              disabled={!selectedSat}
+              className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${
+                activeSection === 'game' ? 'text-emerald-500' : 'text-slate-500 hover:text-white disabled:opacity-30'
+              }`}
+            >
+              Game
             </button>
           </nav>
         </div>

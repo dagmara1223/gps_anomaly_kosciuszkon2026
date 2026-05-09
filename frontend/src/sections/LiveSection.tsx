@@ -5,7 +5,7 @@ import MiniChart from '../components/charts/MiniChart';
 import SandboxSection from './SandboxSection';
 import StatusBadge from '../components/ui/StatusBadge';
 
-export default function LiveSection({satId, SandboxActive,}: {satId: number | null; SandboxActive: boolean;}) {
+export default function LiveSection({ satId, gameCode, SandboxActive }: any) {
   const [stream, setStream] = useState<any[]>([]);
   const ws = useRef<WebSocket | null>(null);
   
@@ -15,16 +15,21 @@ export default function LiveSection({satId, SandboxActive,}: {satId: number | nu
   useEffect(() => {
     if (!satId) return;
     
-    const url = `${import.meta.env.VITE_WS_URL}/ws/stream?sat=${satId}&session_id=${sessionId}`;
-    ws.current = new WebSocket(url);
+    // Budujemy URL w zależności od tego, czy to gra czy tryb normalny
+    const baseUrl = `${import.meta.env.VITE_WS_URL}/ws/stream?sat=${satId}`;
+    const url = gameCode 
+      ? `${baseUrl}&game_code=${gameCode}` 
+      : `${baseUrl}&session_id=${sessionId}`;
 
+    ws.current = new WebSocket(url);
+    
     ws.current.onmessage = (e) => {
       const data = JSON.parse(e.data);
       setStream((prev) => [...prev, data].slice(-40));
     };
 
     return () => ws.current?.close();
-  }, [satId, sessionId]);
+  }, [satId, gameCode, sessionId]);
 
   const latest = stream[stream.length - 1];
 
@@ -42,7 +47,7 @@ export default function LiveSection({satId, SandboxActive,}: {satId: number | nu
         <MiniChart data={stream} dataKey="PC" label="Prompt Correlator" color="#eab308" />
         <MiniChart data={stream} dataKey="LC" label="Late Correlator" color="#f97316" />
       </div>
-      {SandboxActive && <SandboxSection websocketId={sessionId} />}
+      {SandboxActive && <SandboxSection websocketId={gameCode || sessionId} />}
     </div>
   );
 }
