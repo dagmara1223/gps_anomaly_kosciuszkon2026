@@ -12,18 +12,28 @@ DATA_DIR = "../data"
 CHUNK_SIZE = 5000
 
 
-# -----------------------------
 # PER USER STREAM
-# -----------------------------
+
 async def user_stream(websocket: WebSocket, sat: int, interval: float):
 
     file_path = os.path.join(DATA_DIR, f"sat_{sat}.csv")
 
     print(f"USER STREAM STARTED: {file_path}")
 
-    session_id = id(websocket)
-    state = SessionState()
-    sessions[session_id] = state
+    session_id = websocket.query_params.get("session_id")
+
+    if not session_id:
+        print("NO SESSION ID PROVIDED")
+        await websocket.close()
+        return
+
+    if session_id not in sessions:
+        sessions[session_id] = SessionState()
+
+    state = sessions[session_id]
+
+    print("SESSION ID:", session_id)
+    print("STATE OBJECT ID:", id(state))
 
     try:
         for chunk in pd.read_csv(file_path, chunksize=CHUNK_SIZE, engine="python"):
@@ -38,7 +48,6 @@ async def user_stream(websocket: WebSocket, sat: int, interval: float):
                 try:
                     raw = row.to_dict()
 
-                    # 🔥 APPLY TAMPERING HERE
                     tampered = tamper_row(raw, state)
 
                     await websocket.send_json(tampered)
@@ -56,9 +65,9 @@ async def user_stream(websocket: WebSocket, sat: int, interval: float):
         print("SESSION CLEANED")
 
 
-# -----------------------------
+
 # WEBSOCKET ENDPOINT
-# -----------------------------
+
 @router.websocket("/ws/stream")
 async def stream_socket(websocket: WebSocket):
 

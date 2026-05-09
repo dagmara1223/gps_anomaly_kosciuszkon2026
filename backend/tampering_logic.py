@@ -51,12 +51,14 @@ def tamper_row(row: dict, state):
 
     # optional attack modes
     if state.attack_mode == 1:
+        print("Noise attack")
         # noise attack
         for k in r:
             if isinstance(r[k], (int, float)):
                 r[k] += random.uniform(-5, 5)
 
     elif state.attack_mode == 2:
+        print("Spoof attack")
         # spoof attack (drift)
         for k in r:
             if isinstance(r[k], (int, float)):
